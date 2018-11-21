@@ -2,6 +2,7 @@
   "name": "glrandom",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://FredrikNoren.github.io/glrandom",
   "dependencies": {
     "@types/base64-arraybuffer": "^0.1.0",
     "@types/recharts": "^1.1.1",
@@ -18,7 +19,8 @@
     "build": "react-scripts-ts build",
     "test": "react-scripts-ts test --env=jsdom",
     "eject": "react-scripts-ts eject",
-    "deploy": "yarn build && gh-pages -d build"
+    "predeploy": "yarn build",
+    "deploy": "gh-pages -d build"
   },
   "devDependencies": {
     "@types/jest": "^23.3.9",
