@@ -1,13 +1,10 @@
-import { encode } from 'base64-arraybuffer';
+import { encode, decode } from 'base64-arraybuffer';
 
-const sampleSizeSqrt = 600;
-const sampleSize = sampleSizeSqrt * sampleSizeSqrt;
-
-function sampleRandImplementation(implementation: string) {
+function sampleRandImplementation(width: number, height: number, implementation: string) {
 
   const canvas = document.createElement('canvas');
-  canvas.width = sampleSizeSqrt;
-  canvas.height = sampleSizeSqrt;
+  canvas.width = width;
+  canvas.height = height;
   const gl = canvas.getContext("webgl2") as any as WebGL2RenderingContext;
 
   if (!gl.getExtension("EXT_color_buffer_float")) {
@@ -119,9 +116,10 @@ function detectGraphicsCard() {
   }
 }
 
-export interface EncodedSample {
+export interface SampleBase {
   implementation: string;
-  base64values: string;
+  width: number;
+  height: number;
   timestamp: number;
   navigator: {
     appName: string,
@@ -134,9 +132,36 @@ export interface EncodedSample {
     renderer: string
   }
 }
+export interface EncodedSample extends SampleBase {
+  base64values: string;
+}
+export interface Sample extends SampleBase {
+  values: Float32Array;
+}
 
-export function sample(): EncodedSample[] {
+export function encodeSample(sampl: Sample): EncodedSample {
+  const v = {
+    ...sampl,
+    base64values: encode(sampl.values.buffer)
+  };
+  delete v.values;
+  return v;
+}
+export function decodeSample(sampl: EncodedSample): Sample {
+  const v = {
+    ...sampl,
+    values: new Float32Array(decode(sampl.base64values))
+  };
+  delete v.base64values;
+  return v;
+}
+
+export function sample(): Sample[] {
+  const width = 600;
+  const height = 600;
   const common = {
+    width,
+    height,
     timestamp: Date.now(),
     navigator: {
       appName: window.navigator.appName,
@@ -145,25 +170,25 @@ export function sample(): EncodedSample[] {
       userAgent: window.navigator.userAgent,
     },
     glInfo: detectGraphicsCard()
-  }
+  };
   return [
     {
       implementation: 'Javascript',
-      base64values: encode(new Float32Array(new Array(sampleSize).fill(0).map(_ => Math.random())).buffer),
+      values: new Float32Array(new Array(width * height).fill(0).map(_ => Math.random())),
       ...common
     },
     {
       implementation: 'Classic random',
-      base64values: encode(sampleRandImplementation(`
+      values: sampleRandImplementation(width, height, `
         float rand(vec2 co){
           return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
         }
-      `).buffer),
+      `),
       ...common
     },
     {
       implementation: 'Blixt random',
-      base64values: encode(sampleRandImplementation(`
+      values: sampleRandImplementation(width, height, `
         highp float rands(vec2 value, float seed) {
           highp float dotValue = dot(value, vec2(1096.6331584285, 3020.29322778)) * (1.0 + seed);
           return fract(sin(mod(dotValue, 6.283185307179586)) * 59874.14171519782);
@@ -171,15 +196,20 @@ export function sample(): EncodedSample[] {
         highp float rand(vec2 value) {
           return rands(value, 0.0);
         }
-      `).buffer),
+      `),
+      ...common
+    },
+    {
+      implementation: 'Dummy perfect distribution',
+      values: sampleRandImplementation(width, height, `
+        highp float rand(vec2 co) {
+          int y = int(co.y * ${height}.0);
+          int x = int(co.x * ${width}.0);
+          int index = y * ${width} + x;
+          return float(index) / ${width * height}.0;
+        }
+      `),
       ...common
     }
   ];
 }
-
-// function serializeSample(sample: Sample): string {
-//   return JSON.stringify(implementations.map(impl => ({
-//     ...impl,
-//     base64values: encode(impl.values)
-//   })))
-// }

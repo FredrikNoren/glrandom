@@ -1,25 +1,44 @@
 import * as React from 'react';
 import './App.css';
-import samples from './samples.json';
-import { sample } from './sample';
+import encodedSamples from './samples.json';
+import { sample, encodeSample, decodeSample, Sample } from './sample';
+import { RenderSamples } from './render';
+const samples = encodedSamples.map(decodeSample);
 
 class Sampler extends React.Component {
   state = {
-    sample: ''
+    samples: [] as Sample[],
+    samplesJson: '',
+    sampling: false
   }
   sample = () => {
-    this.setState({
-      sample: JSON.stringify(sample(), null, 2)
-    });
+    this.setState({ sampling: true });
+    setTimeout(() => {
+      this.setState({
+        samples: sample(),
+        sampling: false
+      });
+    }, 100);
   }
   render() {
-    if (!this.state.sample) {
-      return <button onClick={this.sample}>Sample</button>;
+    if (this.state.samples.length === 0) {
+      if (this.state.sampling) {
+        return <div>Sampling...</div>;
+      } else {
+        return <button onClick={this.sample}>Create new sample</button>;
+      }
     } else {
       return <div>
-        <p>Insert this at then end of samples.json:</p>
-        <textarea onClick={e => (e.target as HTMLTextAreaElement).select()} value={this.state.sample} />
-        <p>Create a PR with this change to submit this sample.</p>
+        <RenderSamples samples={this.state.samples} />
+        {this.state.samplesJson ? <div>
+          <p>Insert this at then end of samples.json:</p>
+          <textarea onClick={e => (e.target as HTMLTextAreaElement).select()} value={this.state.samplesJson} />
+          <p>Create a PR with this change to submit this sample.</p>
+        </div> : <div>
+          <button onClick={() => this.setState({ samplesJson: JSON.stringify(this.state.samples.map(encodeSample), null, 2) })}>
+            Save these samples
+          </button>
+        </div>}
       </div>
     }
   }
@@ -30,7 +49,7 @@ class App extends React.Component {
     return (
       <div className="App">
         <Sampler />
-        {JSON.stringify(samples)}
+        <RenderSamples samples={samples} />
       </div>
     );
   }
