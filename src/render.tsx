@@ -48,6 +48,46 @@ function LessThanGraph({ values }: { values: Float32Array }) {
   </LineChart>
 }
 
+function toHistogram(values: number[], buckets = 100) {
+  const min = values.reduce((p, x) => Math.min(p, x), values[0]);
+  const max = values.reduce((p, x) => Math.max(p, x), values[0]);
+  const step = (max - min) / buckets;
+  const hist = new Array(buckets).fill(0).map((_, i) => ({ from: min + i * step, to: min + (i + 1) * step, count: 0 }));
+  let nMin = 0;
+  let nMax = 0;
+  for (const v of values) {
+    if (v === min) {
+      nMin++;
+    } else if (v === max) {
+      nMax++;
+    }
+    const p = (v - min) / (max - min);
+    const i = Math.max(0, Math.min(buckets - 1, Math.floor(p * buckets)));
+    hist[i].count++;
+  }
+  return { hist, nMin, nMax, min, max };
+}
+
+
+function Histogram2({ values }: { values: Float32Array }) {
+  const sortedValues = Array.from(values);
+  sortedValues.sort();
+  const distances = [];
+  for (let i = 0; i < sortedValues.length - 1; i++) {
+    distances.push(sortedValues[i + 1] - sortedValues[i]);
+  }
+  const { hist } = toHistogram(Array.from(distances), 800);
+  return <LineChart width={800} height={300} data={hist}>
+    <XAxis dataKey="from" />
+    <YAxis yAxisId={0} dataKey="count" />
+    <Line yAxisId={0} type="monotone" dataKey="count" stroke="#1f6fef" dot={false} />
+    <Tooltip content={({ payload }: { payload: any }) => payload.length > 0 ? 
+      <span>
+        {payload[0].payload.from} to {payload[0].payload.to}: {payload[0].payload.count}
+      </span> : null} />
+  </LineChart>
+}
+
 export function RenderSamples({ samples }: { samples: Sample[] }) {
   return <table>
     <tbody>
@@ -55,11 +95,13 @@ export function RenderSamples({ samples }: { samples: Sample[] }) {
         <th>Implementation</th>
         <th>Img</th>
         <th>rand() &lt; X</th>
+        <th>Histogram2</th>
       </tr>
       {samples.map((sample, i) => <tr key={i}>
         <td>{sample.implementation}</td>
         <td><SamplesCanvas values={sample.values} width={sample.width} height={sample.height} /></td>
         <td><LessThanGraph values={sample.values} /></td>
+        <td><Histogram2 values={sample.values} /></td>
       </tr>)}
     </tbody>
   </table>
