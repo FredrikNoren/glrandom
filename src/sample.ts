@@ -1,4 +1,5 @@
 import { encode, decode } from 'base64-arraybuffer';
+import { implementations } from './implementations';
 
 function sampleRandImplementation(width: number, height: number, implementation: string) {
 
@@ -67,6 +68,7 @@ function sampleRandImplementation(width: number, height: number, implementation:
   precision highp float;
   in vec2 texcoord;
   out vec4 out_value;
+  uniform vec2 outSize;
 
   ${implementation}
 
@@ -91,6 +93,11 @@ function sampleRandImplementation(width: number, height: number, implementation:
   const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+  const outSizeL = gl.getUniformLocation(prog, 'outSize');
+  if (outSizeL) {
+    gl.uniform2f(outSizeL, width, height);
+  }
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -117,6 +124,7 @@ function detectGraphicsCard() {
 }
 
 export interface SampleBase {
+  implementationName: string;
   implementation: string;
   width: number;
   height: number;
@@ -171,45 +179,12 @@ export function sample(): Sample[] {
     },
     glInfo: detectGraphicsCard()
   };
-  return [
-    {
-      implementation: 'Javascript',
-      values: new Float32Array(new Array(width * height).fill(0).map(_ => Math.random())),
-      ...common
-    },
-    {
-      implementation: 'Classic random',
-      values: sampleRandImplementation(width, height, `
-        float rand(vec2 co){
-          return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-        }
-      `),
-      ...common
-    },
-    {
-      implementation: 'Blixt random',
-      values: sampleRandImplementation(width, height, `
-        highp float rands(vec2 value, float seed) {
-          highp float dotValue = dot(value, vec2(1096.6331584285, 3020.29322778)) * (1.0 + seed);
-          return fract(sin(mod(dotValue, 6.283185307179586)) * 59874.14171519782);
-        }
-        highp float rand(vec2 value) {
-          return rands(value, 0.0);
-        }
-      `),
-      ...common
-    },
-    {
-      implementation: 'Dummy perfect distribution',
-      values: sampleRandImplementation(width, height, `
-        highp float rand(vec2 co) {
-          int y = int(co.y * ${height}.0);
-          int x = int(co.x * ${width}.0);
-          int index = y * ${width} + x;
-          return float(index) / ${width * height}.0;
-        }
-      `),
-      ...common
-    }
-  ];
+  return implementations.map((impl): Sample => ({
+    implementationName: impl.name,
+    implementation: impl.implementation,
+    values: impl.implementation === 'Javascript' ?
+      new Float32Array(new Array(width * height).fill(0).map(_ => Math.random())) :
+      sampleRandImplementation(width, height, impl.implementation),
+    ...common
+  }));
 }

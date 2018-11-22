@@ -92,13 +92,15 @@ export function RenderSamples({ samples }: { samples: Sample[] }) {
   return <table>
     <tbody>
       <tr>
+        <th>Name</th>
         <th>Implementation</th>
         <th>Img</th>
         <th>rand() &lt; X</th>
         <th>Histogram2</th>
       </tr>
       {samples.map((sample, i) => <tr key={i}>
-        <td>{sample.implementation}</td>
+        <td>{sample.implementationName}</td>
+        <td><pre>{sample.implementation}</pre></td>
         <td><SamplesCanvas values={sample.values} width={sample.width} height={sample.height} /></td>
         <td><LessThanGraph values={sample.values} /></td>
         <td><Histogram2 values={sample.values} /></td>
